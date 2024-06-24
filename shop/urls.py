@@ -4,7 +4,7 @@ from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from .views import AddressListCreateView, AddressDetailView
 from django.contrib.auth import views as auth_views
 from rest_framework.routers import DefaultRouter
-from .views import ProductViewSet, CategoryViewSet, ProductVariantViewSet, InventoryViewSet
+from .views import ProductViewSet, CategoryViewSet, ProductVariantViewSet, InventoryViewSet, health_check
 
 router = DefaultRouter()
 router.register(r'products', ProductViewSet, basename='product')
@@ -27,5 +27,6 @@ urlpatterns = [
     path('password_reset/done/', auth_views.PasswordResetDoneView.as_view(), name='password_reset_done'),
     path('reset/<uidb64>/<token>/', auth_views.PasswordResetConfirmView.as_view(), name='password_reset_confirm'),
     path('reset/done/', auth_views.PasswordResetCompleteView.as_view(), name='password_reset_complete'),
+    path('health-check/', health_check, name='health-check'),
     path('', include(router.urls)),
     ]

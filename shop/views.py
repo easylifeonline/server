@@ -8,6 +8,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.decorators import action
 from rest_framework import viewsets
+from django.http import HttpResponse
 from rest_framework import status
 from .models import Address, ProductImage
 from rest_framework import generics, permissions
@@ -149,3 +150,6 @@ class InventoryViewSet(viewsets.ModelViewSet):
         This method is used to save the updates to the instance.
         """
         serializer.save()
+
+def health_check(request):
+    return HttpResponse("Your application is running", content_type="text/plain")
