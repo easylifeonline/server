@@ -3,3 +3,9 @@ djangorestframework
 djangorestframework-simplejwt
 django-cors-headers
 gunicorn
+elasticsearch-dsl django-elasticsearch-dsl
+django-elasticsearch-dsl-drf
+setuptools
+requests
+python-decouple
+python-dotenv

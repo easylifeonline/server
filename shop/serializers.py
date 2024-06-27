@@ -1,7 +1,12 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
-from .models import CustomUser, Address
+
+from shop.document import ProductDocument
+from .models import (
+    ClickedProduct, CustomUser, Address, Order, 
+    SearchQuery, Subscriber, VendorRequest, Visit
+)
 from .models import Product, ProductImage
 from .models import ProductVariant, Category, Inventory
 
@@ -40,7 +45,19 @@ class AddressSerializer(serializers.ModelSerializer):
 class UserProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomUser
-        fields = ['username', 'first_name', 'last_name', 'profile_picture', 'email', 'role']
+        fields = ['id', 'username', 'first_name', 'last_name', 'profile_picture', 'email', 'role']
+
+    def update(self, instance, validated_data):
+        instance.role = validated_data.get('role', instance.role)
+        instance.save()
+        return instance
+    
+
+class ProductDocumentSerializer(serializers.Serializer):
+    title = serializers.CharField()
+    description = serializers.CharField()
+    price = serializers.DecimalField(max_digits=10, decimal_places=2)
+    sku = serializers.CharField()
 
 
 class ProductImageSerializer(serializers.ModelSerializer):
@@ -82,3 +99,56 @@ class ProductSerializer(serializers.ModelSerializer):
         category = validated_data.pop('category')
         product = Product.objects.create(category=category, **validated_data)
         return product
+
+class OrderSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Order
+        fields = ['id', 'total', 'created_at', 'items']
+
+
+class SubscriberSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Subscriber
+        fields = ['email']
+
+    def validate_email(self, value):
+        if Subscriber.objects.filter(email=value).exists():
+            raise serializers.ValidationError("This email is already subscribed.")
+        return value
+    
+
+class VisitSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Visit
+        fields = '__all__'
+
+class ClickedProductSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ClickedProduct
+        fields = '__all__'
+
+class SearchQuerySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SearchQuery
+        fields = '__all__'
+
+class VendorRequestSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = VendorRequest
+        fields = [
+            'id',
+            'business_name',
+            'contact_person',
+            'email',
+            'phone',
+            'product_types',
+            'address',
+            'city',
+            'state',
+            'zip_code',
+            'country',
+            'description',
+            'status',
+            'activity',
+            'created_at'
+        ]

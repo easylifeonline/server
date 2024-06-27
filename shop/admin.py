@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import CustomUser, Product, Order, Review, Contact, Subscriber, Category, ProductCategory, ProductImage, ProductAttribute, Address, Inventory
+from .models import ClickedProduct, CustomUser, Product, Order, Review, Contact, SearchQuery, Subscriber, Category, ProductCategory, ProductImage, ProductAttribute, Address, Inventory, VendorRequest, Visit
 from django.contrib.auth.admin import UserAdmin
 from django.db import transaction, IntegrityError
 
@@ -49,6 +49,11 @@ class CustomUserAdmin(admin.ModelAdmin):
         # This might include initializing vendor-specific settings or data
         pass
 
+@admin.register(SearchQuery)
+class SearchQueryAdmin(admin.ModelAdmin):
+    list_display = ('user', 'query', 'timestamp')
+    search_fields = ('query',)
+
 admin.site.register(Product)
 admin.site.register(Order)
 admin.site.register(Review)
@@ -60,4 +65,6 @@ admin.site.register(ProductImage)
 admin.site.register(ProductAttribute)
 admin.site.register(Address)
 admin.site.register(Inventory)
-
+admin.site.register(Visit)
+admin.site.register(ClickedProduct)
+admin.site.register(VendorRequest)

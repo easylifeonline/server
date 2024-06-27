@@ -70,9 +70,16 @@ class Product(models.Model):
         return self.title
 
 class Order(models.Model):
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('completed', 'Completed'),
+        ('canceled', 'Canceled'),
+    ]
+    
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='orders')
-    items = models.ManyToManyField(Product)
+    items = models.ManyToManyField('Product')
     total = models.DecimalField(max_digits=10, decimal_places=2)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -136,7 +143,61 @@ class ProductVariant(models.Model):
 
 class Inventory(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='inventory')
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='inventory')
     quantity = models.PositiveIntegerField()
 
     def __str__(self):
         return f"{self.product.title} - {self.quantity} in stock"
+    
+
+class Visit(models.Model):
+    count = models.PositiveIntegerField(default=0)
+    last_visit = models.DateTimeField(auto_now=True)
+
+class ClickedProduct(models.Model):
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, null=True, blank=True)
+    product = models.ForeignKey(Product, on_delete=models.CASCADE)
+    count = models.PositiveIntegerField(default=0)
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f'{self.product.title} clicked {self.count} times'
+
+class SearchQuery(models.Model):
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, null=True, blank=True)
+    query = models.CharField(max_length=255)
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.query
+    
+class VendorRequest(models.Model):
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('under_review', 'Under Review'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected'),
+    ]
+
+    ACTIVITY_CHOICES = [
+        ('actif', 'Actif'),
+        ('inactif', 'Inactif'),
+    ]
+
+    business_name = models.CharField(max_length=255)
+    contact_person = models.CharField(max_length=255)
+    email = models.EmailField()
+    phone = models.CharField(max_length=20)
+    product_types = models.TextField()
+    address = models.CharField(max_length=255)
+    city = models.CharField(max_length=100)
+    state = models.CharField(max_length=100)
+    zip_code = models.CharField(max_length=20)
+    country = models.CharField(max_length=100)
+    description = models.TextField()
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    activity = models.CharField(max_length=20, choices=ACTIVITY_CHOICES, default='actif')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.business_name
