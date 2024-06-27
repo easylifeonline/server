@@ -85,20 +85,41 @@ class InventorySerializer(serializers.ModelSerializer):
         fields = ['id', 'quantity', 'product_id', 'product_name']
 
 
+# class ProductSerializer(serializers.ModelSerializer):
+#     variants = ProductVariantSerializer(many=True, read_only=True)
+#     inventory = InventorySerializer(many=True, read_only=True)
+#     category_id = serializers.PrimaryKeyRelatedField(queryset=Category.objects.all(), source='category', write_only=True)
+#     category = CategorySerializer(read_only=True)
+
+#     class Meta:
+#         model = Product
+#         fields = ['id', 'title', 'description', 'price', 'category', 'category_id', 'image', 'sku', 'variants', 'inventory']
+
+#     def create(self, validated_data):
+#         category = validated_data.pop('category')
+#         product = Product.objects.create(category=category, **validated_data)
+#         return product
+
 class ProductSerializer(serializers.ModelSerializer):
-    variants = ProductVariantSerializer(many=True, read_only=True)
-    inventory = InventorySerializer(many=True, read_only=True)
     category_id = serializers.PrimaryKeyRelatedField(queryset=Category.objects.all(), source='category', write_only=True)
     category = CategorySerializer(read_only=True)
 
     class Meta:
         model = Product
-        fields = ['id', 'title', 'description', 'price', 'category', 'category_id', 'image', 'sku', 'variants', 'inventory']
+        fields = ['id', 'title', 'description', 'price', 'category', 'category_id', 'image', 'sku']
 
     def create(self, validated_data):
-        category = validated_data.pop('category')
-        product = Product.objects.create(category=category, **validated_data)
-        return product
+        return Product.objects.create(**validated_data)
+
+    def update(self, instance, validated_data):
+        instance.title = validated_data.get('title', instance.title)
+        instance.description = validated_data.get('description', instance.description)
+        instance.price = validated_data.get('price', instance.price)
+        instance.category = validated_data.get('category', instance.category)
+        instance.sku = validated_data.get('sku', instance.sku)
+        instance.image = validated_data.get('image', instance.image)
+        instance.save()
+        return instance
 
 class OrderSerializer(serializers.ModelSerializer):
     class Meta:

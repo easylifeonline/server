@@ -1,17 +1,16 @@
 from django.urls import path, include
+from rest_framework.routers import DefaultRouter
 from .views import (
     AdminDashboardView, CategoryCreateView, CategoryRetrieveUpdateDestroyView, CategoryViewSet, ClickedProductView, 
     CustomerDashboardView, LogoutView, ProductSearchView, 
     ProductViewAllSet, RegisterView, SearchQueryView, 
     SubscriberCreateView, UserDetailView, UserProfileView, 
     UserViewSet, VendorDashboardView, VendorRequestDetailView, VendorRequestListCreateView, VisitViewSet,
-    ProductDetailView, proxy_elasticsearch
+    ProductDetailView, proxy_elasticsearch, ProductViewSet, ProductVariantViewSet, InventoryViewSet, health_check
 )
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from .views import AddressListCreateView, AddressDetailView
 from django.contrib.auth import views as auth_views
-from rest_framework.routers import DefaultRouter
-from .views import ProductViewSet, ProductVariantViewSet, InventoryViewSet, health_check
 
 router = DefaultRouter()
 router.register(r'products', ProductViewSet, basename='product')
@@ -51,4 +50,4 @@ urlpatterns = [
     path('category/', CategoryCreateView.as_view(), name='category-create'),
     path('category/<int:pk>/', CategoryRetrieveUpdateDestroyView.as_view(), name='category-retrieve-update-destroy'),
     path('', include(router.urls)),
-    ]
+]

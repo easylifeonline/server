@@ -132,6 +132,7 @@ class ProductViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(vendor=self.request.user)
+    
 
 class ProductViewAllSet(viewsets.ReadOnlyModelViewSet):
     queryset = Product.objects.all()
