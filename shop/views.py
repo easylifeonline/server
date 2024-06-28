@@ -131,7 +131,20 @@ class ProductViewSet(viewsets.ModelViewSet):
         return self.queryset.none()
 
     def perform_create(self, serializer):
-        serializer.save(vendor=self.request.user)
+        try:
+            serializer.save(vendor=self.request.user)
+            logger.info("Product created successfully.")
+        except Exception as e:
+            logger.error(f"Error during product creation: {str(e)}")
+            raise e
+
+    def perform_update(self, serializer):
+        try:
+            serializer.save()
+            logger.info("Product updated successfully.")
+        except Exception as e:
+            logger.error(f"Error during product update: {str(e)}")
+            raise e
     
 
 class ProductViewAllSet(viewsets.ReadOnlyModelViewSet):

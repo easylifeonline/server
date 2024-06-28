@@ -20,8 +20,8 @@ load_dotenv()
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-MEDIA_URL = '/media/' 
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media/')
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'frontend', 'src', 'components', 'media')
 
 
 # Quick-start development settings - unsuitable for production
@@ -35,11 +35,11 @@ DEBUG = False
 
 ALLOWED_HOSTS = ['localhost', '127.0.0.1', '[::1]', 'server-ecommerce-1pvv.onrender.com']
 
-ELASTICSEARCH_DSL = {
-    'default': {
-        'hosts': 'localhost:9200'
-    },
-}
+# ELASTICSEARCH_DSL = {
+#     'default': {
+#         'hosts': 'http://localhost:9200'
+#     },
+# }
 
 
 # Application definition
@@ -54,8 +54,8 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'corsheaders',
     'rest_framework_simplejwt',
-    'django_elasticsearch_dsl',
-    'django_elasticsearch_dsl_drf',
+    # 'django_elasticsearch_dsl',
+    # 'django_elasticsearch_dsl_drf',
     'rest_framework',
     'rest_framework_simplejwt.token_blacklist',
 ]
@@ -65,7 +65,7 @@ AUTH_USER_MODEL = 'shop.CustomUser'
 
 STATICFILES_DIRS = [
     BASE_DIR / "static",
-    BASE_DIR / "frontend/build/static",  # Ensure this path is correct
+    BASE_DIR / "frontend/build/static", 
 ]
 
 MIDDLEWARE = [
