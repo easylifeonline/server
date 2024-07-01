@@ -5,29 +5,26 @@ from django.db import models
 import logging
 from django.db.models import Sum
 from django.contrib.auth import get_user_model
-from elasticsearch_dsl.query import MultiMatch
 from django.core.mail import send_mail
-from elasticsearch_dsl import Search, Q
 import requests
 from django.views.decorators.csrf import csrf_exempt
-from shop.document import ProductDocument
 from django.http import JsonResponse
-from .serializers import ClickedProductSerializer, OrderSerializer, RegisterSerializer, SearchQuerySerializer, SubscriberSerializer, UserProfileSerializer, AddressSerializer, VendorRequestSerializer, VisitSerializer
+from .serializers import CartItemSerializer, CartSerializer, ClickedProductSerializer, ContactSubmissionSerializer, HelpArticleSerializer, HelpCategorySerializer, OrderSerializer, ProductDatabaseSerializer, RegisterSerializer, SearchQuerySerializer, SubscriberSerializer, UserProfileSerializer, AddressSerializer, VendorPoliciesGuidelinesSerializer, VendorRequestSerializer, VisitSerializer
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.decorators import action
-from django_elasticsearch_dsl.search import Search
 from rest_framework.views import APIView
 from rest_framework import viewsets
 from django.http import HttpResponse
 from rest_framework import status
-from .models import Address, ClickedProduct, CustomUser, ProductImage, SearchQuery, Subscriber, VendorRequest, Visit
+from .models import Address, Cart, CartItem, ClickedProduct, CustomUser, HelpArticle, HelpCategory, OrderItem, ProductDatabase, ProductImage, SearchQuery, Subscriber, VendorPoliciesGuidelines, VendorRequest, Visit
 from rest_framework import generics, permissions
 from django.contrib.auth import logout
 from .models import Product, ProductVariant, Category, Inventory, Order
 from .serializers import ProductSerializer, ProductVariantSerializer, CategorySerializer, InventorySerializer
 from django.conf import settings
+from django.shortcuts import get_object_or_404
 
 User = get_user_model()
 
@@ -123,53 +120,70 @@ class ProductViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
 
     def get_queryset(self):
+        queryset = super().get_queryset()
         user = self.request.user
+        category_name = self.request.query_params.get('category', None)
+
         if user.is_authenticated and user.role == 'vendor':
             vendor = self.request.query_params.get('vendor', None)
             if vendor:
-                return self.queryset.filter(vendor__username=vendor)
-        return self.queryset.none()
+                queryset = queryset.filter(vendor__username=vendor)
+
+        if category_name:
+            category = get_object_or_404(Category, name=category_name)
+            queryset = queryset.filter(category=category)
+
+        return queryset
 
     def perform_create(self, serializer):
         try:
-            serializer.save(vendor=self.request.user)
-            logger.info("Product created successfully.")
+            product = serializer.save(vendor=self.request.user)
+            ProductDatabase.objects.create(
+                title=product.title,
+                description=product.description
+            )
         except Exception as e:
-            logger.error(f"Error during product creation: {str(e)}")
             raise e
 
     def perform_update(self, serializer):
         try:
-            serializer.save()
-            logger.info("Product updated successfully.")
+            product = serializer.save()
+            product_db_entry, created = ProductDatabase.objects.get_or_create(
+                title=product.title,
+                defaults={'description': product.description}
+            )
+            if not created:
+                product_db_entry.description = product.description
+                product_db_entry.save()
         except Exception as e:
-            logger.error(f"Error during product update: {str(e)}")
             raise e
+
+
+
+        
+class ProductDatabaseViewSet(viewsets.ModelViewSet):
+    queryset = ProductDatabase.objects.all()
+    serializer_class = ProductDatabaseSerializer
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+
+class ProductSearchView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request, *args, **kwargs):
+        query = request.query_params.get('q', '')
+        if not query:
+            return Response({"error": "Query parameter 'q' is required."}, status=400)
+
+        from .retriever import retrieve_products
+        retrieved_products = retrieve_products(query)
+        serializer = ProductDatabaseSerializer(retrieved_products, many=True)
+        return Response(serializer.data)
     
 
 class ProductViewAllSet(viewsets.ReadOnlyModelViewSet):
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
     permission_classes = [AllowAny]
-
-
-class ProductSearchView(APIView):
-    permission_classes = [permissions.AllowAny]
-
-    def get(self, request):
-        query = request.query_params.get('q', '')
-        if not query:
-            return Response({"error": "Query parameter 'q' is required."}, status=status.HTTP_400_BAD_REQUEST)
-
-        try:
-            search = Search(index=ProductDocument.Index.name).query(
-                Q("multi_match", query=query, fields=['title', 'description'])
-            )
-            response = search.execute()
-            products = [hit.to_dict() for hit in response]
-            return Response(products, status=status.HTTP_200_OK)
-        except Exception as e:
-            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class CategoryViewSet(viewsets.ModelViewSet):
@@ -261,13 +275,13 @@ class VendorDashboardView(APIView):
                 return Response({'error': 'Unauthorized'}, status=status.HTTP_403_FORBIDDEN)
 
             # Calculate total sales for the vendor
-            total_sales = Order.objects.filter(items__vendor=vendor).aggregate(Sum('total'))['total__sum'] or 0
+            total_sales = OrderItem.objects.filter(product__vendor=vendor).aggregate(total_sales=Sum('price'))['total_sales'] or 0
             
             # Calculate total products for the vendor
             total_products = Product.objects.filter(vendor=vendor).count()
             
             # Calculate pending orders for the vendor
-            pending_orders = Order.objects.filter(items__vendor=vendor, status='pending').distinct().count()
+            pending_orders = Order.objects.filter(items__product__vendor=vendor, status='pending').distinct().count()
 
             data = {
                 'total_sales': total_sales,
@@ -352,10 +366,10 @@ class SearchQueryView(APIView):
         return Response({"message": "Search query tracked successfully."}, status=status.HTTP_201_CREATED)
 
 
-class ProductDetailView(generics.RetrieveAPIView):
-    queryset = Product.objects.all()
-    serializer_class = ProductSerializer
-    permission_classes = [AllowAny]
+# class ProductDetailView(generics.RetrieveAPIView):
+#     queryset = Product.objects.all()
+#     serializer_class = ProductSerializer
+#     permission_classes = [AllowAny]
 
 
 @csrf_exempt
@@ -498,5 +512,174 @@ class VendorRequestDetailView(generics.RetrieveUpdateDestroyAPIView):
             status=status.HTTP_400_BAD_REQUEST
         )
     
+class CartViewSet(viewsets.ModelViewSet):
+    permission_classes = [IsAuthenticated]
+    serializer_class = CartSerializer
+
+    def get_queryset(self):
+        return Cart.objects.filter(user=self.request.user)
+
+    def create(self, request, *args, **kwargs):
+        cart, created = Cart.objects.get_or_create(user=request.user)
+        serializer = self.get_serializer(cart)
+        return Response(serializer.data)
+
+class CartItemViewSet(viewsets.ModelViewSet):
+    permission_classes = [IsAuthenticated]
+    serializer_class = CartItemSerializer
+
+    def get_queryset(self):
+        return CartItem.objects.filter(cart__user=self.request.user)
+
+    def create(self, request, *args, **kwargs):
+        cart, created = Cart.objects.get_or_create(user=request.user)
+        product_id = request.data.get('product')
+        quantity = request.data.get('quantity', 1)
+        cart_item, created = CartItem.objects.get_or_create(cart=cart, product_id=product_id)
+        if not created:
+            cart_item.quantity += int(quantity)
+            cart_item.save()
+        serializer = self.get_serializer(cart_item)
+        return Response(serializer.data)
+
+    def update(self, request, *args, **kwargs):
+        cart_item = self.get_object()
+        cart_item.quantity = request.data.get('quantity', cart_item.quantity)
+        cart_item.save()
+        serializer = self.get_serializer(cart_item)
+        return Response(serializer.data)
+
+class OrderViewSet(viewsets.ModelViewSet):
+    permission_classes = [IsAuthenticated]
+    serializer_class = OrderSerializer
+
+    def get_queryset(self):
+        return Order.objects.filter(user=self.request.user)
+
+    def create(self, request, *args, **kwargs):
+        cart = Cart.objects.get(user=request.user)
+        items = cart.items.all()
+        order = Order.objects.create(
+            user=request.user,
+            billing_address=request.data.get('billing_address'),
+            shipping_address=request.data.get('shipping_address'),
+            payment_method=request.data.get('payment_method'),
+            total=sum(item.product.price * item.quantity for item in items)
+        )
+        for item in items:
+            OrderItem.objects.create(
+                order=order,
+                product=item.product,
+                quantity=item.quantity,
+                price=item.product.price
+            )
+        cart.items.all().delete()
+        serializer = self.get_serializer(order)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    
 def health_check(request):
     return HttpResponse("Your application is running", content_type="text/plain")
+
+class FeaturedProductsView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        type = request.query_params.get('type')
+        if type == 'best-sellers':
+            products = Product.objects.filter(is_best_seller=True)
+        elif type == 'new-arrivals':
+            products = Product.objects.filter(is_new_arrival=True)
+        elif type == 'most-visited':
+            products = Product.objects.order_by('-views')[:5]
+        else:
+            products = Product.objects.none()
+
+        serializer = ProductSerializer(products, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+
+
+class ProductDetailView(APIView):
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+
+    def get(self, request, pk):
+        try:
+            product = Product.objects.get(pk=pk)
+            product.views += 1
+            product.save()
+            serializer = ProductSerializer(product)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Product.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+
+    def delete(self, request, pk):
+        try:
+            product = Product.objects.get(pk=pk)
+            self.check_object_permissions(request, product)
+            product.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except Product.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+
+
+class HelpCategoryViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = HelpCategory.objects.all()
+    serializer_class = HelpCategorySerializer
+    permission_classes = [AllowAny]
+
+
+class HelpArticleViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = HelpArticle.objects.all()
+    serializer_class = HelpArticleSerializer
+    permission_classes = [AllowAny]
+
+    @action(detail=False, methods=['get'])
+    def by_category(self, request, pk=None):
+        category_id = request.query_params.get('category_id')
+        articles = HelpArticle.objects.filter(category_id=category_id)
+        serializer = self.get_serializer(articles, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get'])
+    def search(self, request, pk=None):
+        query = request.query_params.get('query')
+        articles = HelpArticle.objects.filter(title__icontains=query)
+        serializer = self.get_serializer(articles, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get'])
+    def popular(self, request, pk=None):
+        articles = HelpArticle.objects.order_by('-views')[:10]  # Top 10 popular articles
+        serializer = self.get_serializer(articles, many=True)
+        return Response(serializer.data)
+    
+
+class VendorPoliciesGuidelinesViewSet(viewsets.ViewSet):
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+
+    def get_object(self):
+        obj, created = VendorPoliciesGuidelines.objects.get_or_create(id=1)
+        return obj
+
+    def retrieve(self, request, pk=None):
+        instance = self.get_object()
+        serializer = VendorPoliciesGuidelinesSerializer(instance)
+        return Response(serializer.data)
+
+    def update(self, request, pk=None):
+        instance = self.get_object()
+        serializer = VendorPoliciesGuidelinesSerializer(instance, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=400)
+    
+
+class ContactSubmissionView(APIView):
+    permission_classes = [AllowAny]
+    def post(self, request):
+        serializer = ContactSubmissionSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

@@ -10,3 +10,14 @@ setuptools
 requests
 python-decouple
 python-dotenv
+celery 
+redis
+supervisor
+transformers 
+datasets 
+faiss-cpu
+numpy
+torch 
+torchvision 
+torchaudio
+tensorflow

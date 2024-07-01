@@ -1,11 +1,11 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import (
-    AdminDashboardView, CategoryCreateView, CategoryRetrieveUpdateDestroyView, CategoryViewSet, ClickedProductView, 
-    CustomerDashboardView, LogoutView, ProductSearchView, 
+    AdminDashboardView, CartItemViewSet, CartViewSet, CategoryCreateView, CategoryRetrieveUpdateDestroyView, CategoryViewSet, ClickedProductView, ContactSubmissionView, 
+    CustomerDashboardView, FeaturedProductsView, HelpArticleViewSet, HelpCategoryViewSet, LogoutView, OrderViewSet, ProductDatabaseViewSet, ProductSearchView, 
     ProductViewAllSet, RegisterView, SearchQueryView, 
     SubscriberCreateView, UserDetailView, UserProfileView, 
-    UserViewSet, VendorDashboardView, VendorRequestDetailView, VendorRequestListCreateView, VisitViewSet,
+    UserViewSet, VendorDashboardView, VendorPoliciesGuidelinesViewSet, VendorRequestDetailView, VendorRequestListCreateView, VisitViewSet,
     ProductDetailView, proxy_elasticsearch, ProductViewSet, ProductVariantViewSet, InventoryViewSet, health_check
 )
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
@@ -20,6 +20,14 @@ router.register(r'inventory', InventoryViewSet, basename='inventory')
 router.register(r'products-all', ProductViewAllSet, basename='product-all')
 router.register(r'users', UserViewSet, basename='user')
 router.register(r'visits', VisitViewSet, basename='visit')
+router.register(r'cart', CartViewSet, basename='cart')
+router.register(r'cart/items', CartItemViewSet, basename='cart-item')
+router.register(r'orders', OrderViewSet, basename='order')
+router.register(r'product-database', ProductDatabaseViewSet)
+router.register(r'help-categories', HelpCategoryViewSet)
+router.register(r'help-articles', HelpArticleViewSet)
+router.register(r'vendor-policies-guidelines', VendorPoliciesGuidelinesViewSet, basename='vendor-policies-guidelines')
+
 
 urlpatterns = [
     path('register/', RegisterView.as_view(), name='register'),
@@ -35,19 +43,20 @@ urlpatterns = [
     path('password_reset/done/', auth_views.PasswordResetDoneView.as_view(), name='password_reset_done'),
     path('reset/<uidb64>/<token>/', auth_views.PasswordResetConfirmView.as_view(), name='password_reset_confirm'),
     path('reset/done/', auth_views.PasswordResetCompleteView.as_view(), name='password_reset_complete'),
-    path('products/search/', ProductSearchView.as_view(), name='product_search'),
     path('health-check/', health_check, name='health-check'),
     path('admin/dashboard/', AdminDashboardView.as_view(), name='admin-dashboard'),
     path('vendor/dashboard/', VendorDashboardView.as_view(), name='vendor-dashboard'),
     path('customer/dashboard/', CustomerDashboardView.as_view(), name='customer-dashboard'),
     path('subscribe/', SubscriberCreateView.as_view(), name='subscribe'),
     path('clicked-products/', ClickedProductView.as_view(), name='clicked-product'),
-    path('search-queries/', SearchQueryView.as_view(), name='search-query'),
+    path('search/', ProductSearchView.as_view(), name='product-search'),
     path('products/<int:pk>/', ProductDetailView.as_view(), name='product-detail'),
     path('elasticsearch/<path:path>', proxy_elasticsearch, name='proxy_elasticsearch'),
     path('vendor-requests/', VendorRequestListCreateView.as_view(), name='vendor-requests-list-create'),
     path('vendor-requests/<int:pk>/', VendorRequestDetailView.as_view(), name='vendor-requests-detail'),
     path('category/', CategoryCreateView.as_view(), name='category-create'),
     path('category/<int:pk>/', CategoryRetrieveUpdateDestroyView.as_view(), name='category-retrieve-update-destroy'),
+    path('products/featured/', FeaturedProductsView.as_view(), name='featured-products'),
+    path('contact/', ContactSubmissionView.as_view(), name='contact_submission'),
     path('', include(router.urls)),
 ]

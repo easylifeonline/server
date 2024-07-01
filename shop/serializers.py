@@ -2,10 +2,9 @@ from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 
-from shop.document import ProductDocument
 from .models import (
-    ClickedProduct, CustomUser, Address, Order, 
-    SearchQuery, Subscriber, VendorRequest, Visit
+    Cart, CartItem, ClickedProduct, ContactSubmission, CustomUser, Address, HelpArticle, HelpCategory, Order, OrderItem, ProductDatabase, 
+    SearchQuery, Subscriber, VendorPoliciesGuidelines, VendorRequest, Visit
 )
 from .models import Product, ProductImage
 from .models import ProductVariant, Category, Inventory
@@ -67,9 +66,11 @@ class ProductImageSerializer(serializers.ModelSerializer):
     
 
 class CategorySerializer(serializers.ModelSerializer):
+    subcategories = serializers.PrimaryKeyRelatedField(many=True, read_only=True)
+
     class Meta:
         model = Category
-        fields = ['id', 'name']
+        fields = ['id', 'name', 'parent', 'subcategories']
 
 class ProductVariantSerializer(serializers.ModelSerializer):
     class Meta:
@@ -120,11 +121,11 @@ class ProductSerializer(serializers.ModelSerializer):
         instance.image = validated_data.get('image', instance.image)
         instance.save()
         return instance
-
-class OrderSerializer(serializers.ModelSerializer):
+    
+class ProductDatabaseSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Order
-        fields = ['id', 'total', 'created_at', 'items']
+        model = ProductDatabase
+        fields = ['id', 'title', 'description', 'created_at', 'updated_at']
 
 
 class SubscriberSerializer(serializers.ModelSerializer):
@@ -173,3 +174,55 @@ class VendorRequestSerializer(serializers.ModelSerializer):
             'activity',
             'created_at'
         ]
+
+class CartItemSerializer(serializers.ModelSerializer):
+    product = ProductSerializer()
+
+    class Meta:
+        model = CartItem
+        fields = ['id', 'product', 'quantity', 'price', 'image']
+
+class CartSerializer(serializers.ModelSerializer):
+    items = CartItemSerializer(many=True)
+
+    class Meta:
+        model = Cart
+        fields = ['id', 'user', 'created_at', 'items']
+
+class OrderItemSerializer(serializers.ModelSerializer):
+    product = ProductSerializer()
+
+    class Meta:
+        model = OrderItem
+        fields = ['id', 'product', 'quantity', 'price']
+
+class OrderSerializer(serializers.ModelSerializer):
+    items = OrderItemSerializer(many=True)
+
+    class Meta:
+        model = Order
+        fields = ['id', 'user', 'created_at', 'billing_address', 'shipping_address', 'status', 'payment_method', 'total', 'items']
+
+
+class HelpCategorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = HelpCategory
+        fields = ['id', 'name', 'description']
+
+
+class HelpArticleSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = HelpArticle
+        fields = ['id', 'category', 'title', 'content', 'views']
+
+
+class VendorPoliciesGuidelinesSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = VendorPoliciesGuidelines
+        fields = ['id', 'title', 'description']
+
+
+class ContactSubmissionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ContactSubmission
+        fields = '__all__'

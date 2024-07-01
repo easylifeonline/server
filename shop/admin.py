@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import ClickedProduct, CustomUser, Product, Order, Review, Contact, SearchQuery, Subscriber, Category, ProductCategory, ProductImage, ProductAttribute, Address, Inventory, VendorRequest, Visit
+from .models import Cart, CartItem, ClickedProduct, ContactSubmission, CustomUser, Product, Order, ProductDatabase, Review, Contact, SearchQuery, Subscriber, Category, ProductCategory, ProductImage, ProductAttribute, Address, Inventory, VendorPoliciesGuidelines, VendorRequest, Visit
 from django.contrib.auth.admin import UserAdmin
 from django.db import transaction, IntegrityError
 
@@ -54,6 +54,8 @@ class SearchQueryAdmin(admin.ModelAdmin):
     list_display = ('user', 'query', 'timestamp')
     search_fields = ('query',)
 
+
+admin.site.register(VendorPoliciesGuidelines)
 admin.site.register(Product)
 admin.site.register(Order)
 admin.site.register(Review)
@@ -68,3 +70,7 @@ admin.site.register(Inventory)
 admin.site.register(Visit)
 admin.site.register(ClickedProduct)
 admin.site.register(VendorRequest)
+admin.site.register(CartItem)
+admin.site.register(Cart)
+admin.site.register(ProductDatabase)
+admin.site.register(ContactSubmission)

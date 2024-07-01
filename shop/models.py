@@ -1,5 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
+from django.utils import timezone
 
 class CustomUser(AbstractUser):
     ROLE_CHOICES = [
@@ -52,6 +53,7 @@ class Address(models.Model):
 
 class Category(models.Model):
     name = models.CharField(max_length=255)
+    parent = models.ForeignKey('self', null=True, blank=True, related_name='subcategories', on_delete=models.CASCADE)
 
     def __str__(self):
         return self.name
@@ -64,10 +66,39 @@ class Product(models.Model):
     category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True, related_name='products')
     image = models.ImageField(upload_to='images', blank=True, null=True)
     sku = models.CharField(max_length=100, unique=True)
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+    is_best_seller = models.BooleanField(default=False)
+    is_new_arrival = models.BooleanField(default=True)  # Default to True for new products
+    views = models.PositiveIntegerField(default=0)
     active = models.BooleanField(default=True)
 
     def __str__(self):
         return self.title
+    
+class ProductDatabase(models.Model):
+    title = models.CharField(max_length=255)
+    description = models.TextField()
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.title
+    
+class Cart(models.Model):
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='cart')
+    created_at = models.DateTimeField(default=timezone.now)
+
+    def __str__(self):
+        return f'Cart {self.id} by {self.user.username}'
+
+class CartItem(models.Model):
+    cart = models.ForeignKey(Cart, on_delete=models.CASCADE, related_name='items')
+    product = models.ForeignKey(Product, on_delete=models.CASCADE)
+    quantity = models.PositiveIntegerField(default=1)
+
+    def __str__(self):
+        return f'{self.product.title} x {self.quantity}'
 
 class Order(models.Model):
     STATUS_CHOICES = [
@@ -75,31 +106,41 @@ class Order(models.Model):
         ('completed', 'Completed'),
         ('canceled', 'Canceled'),
     ]
-    
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='orders')
-    items = models.ManyToManyField('Product')
-    total = models.DecimalField(max_digits=10, decimal_places=2)
+    created_at = models.DateTimeField(default=timezone.now)
+    billing_address = models.TextField(default='')
+    shipping_address = models.TextField(default='')
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
-    created_at = models.DateTimeField(auto_now_add=True)
+    payment_method = models.CharField(max_length=100, default='')
+    total = models.DecimalField(max_digits=10, decimal_places=2, default=0.0)
 
     def __str__(self):
         return f'Order {self.id} by {self.user.username}'
 
+class OrderItem(models.Model):
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='items')
+    product = models.ForeignKey(Product, on_delete=models.CASCADE)
+    quantity = models.PositiveIntegerField(default=1)
+    price = models.DecimalField(max_digits=10, decimal_places=2, default=0.0)
+
+    def __str__(self):
+        return f'{self.product.title} x {self.quantity}'
+
 class Review(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='reviews')
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='reviews')
-    rating = models.PositiveSmallIntegerField()
-    comment = models.TextField()
-    created_at = models.DateTimeField(auto_now_add=True)
+    rating = models.PositiveSmallIntegerField(default=1)
+    comment = models.TextField(default='')
+    created_at = models.DateTimeField(default=timezone.now)
 
     def __str__(self):
-        return f'Review {self.id} for {self.product.name} by {self.user.username}'
+        return f'Review {self.id} for {self.product.title} by {self.user.username}'
 
 class Contact(models.Model):
-    name = models.CharField(max_length=255)
+    name = models.CharField(max_length=255, default='')
     email = models.EmailField()
-    message = models.TextField()
-    created_at = models.DateTimeField(auto_now_add=True)
+    message = models.TextField(default='')
+    created_at = models.DateTimeField(default=timezone.now)
 
     def __str__(self):
         return f'Contact {self.id} from {self.name}'
@@ -115,28 +156,28 @@ class ProductCategory(models.Model):
     category = models.ForeignKey(Category, on_delete=models.CASCADE)
 
     def __str__(self):
-        return f'{self.product.name} in {self.category.name}'
+        return f'{self.product.title} in {self.category.name}'
 
 class ProductImage(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='images')
     image = models.ImageField(upload_to='products/')
 
     def __str__(self):
-        return f'Image {self.id} of {self.product.name}'
+        return f'Image {self.id} of {self.product.title}'
 
 class ProductAttribute(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='attributes')
-    name = models.CharField(max_length=255)
-    value = models.CharField(max_length=255)
+    name = models.CharField(max_length=255, default='')
+    value = models.CharField(max_length=255, default='')
 
     def __str__(self):
-        return f'{self.name}: {self.value} for {self.product.name}'
+        return f'{self.name}: {self.value} for {self.product.title}'
 
     
 class ProductVariant(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='variants')
-    variant_name = models.CharField(max_length=255)
-    variant_value = models.CharField(max_length=255)
+    variant_name = models.CharField(max_length=255, default='')
+    variant_value = models.CharField(max_length=255, default='')
 
     def __str__(self):
         return f"{self.variant_name}: {self.variant_value}"
@@ -144,7 +185,7 @@ class ProductVariant(models.Model):
 class Inventory(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='inventory')
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='inventory')
-    quantity = models.PositiveIntegerField()
+    quantity = models.PositiveIntegerField(default=0)
 
     def __str__(self):
         return f"{self.product.title} - {self.quantity} in stock"
@@ -184,20 +225,54 @@ class VendorRequest(models.Model):
         ('inactif', 'Inactif'),
     ]
 
-    business_name = models.CharField(max_length=255)
-    contact_person = models.CharField(max_length=255)
+    business_name = models.CharField(max_length=255, default='')
+    contact_person = models.CharField(max_length=255, default='')
     email = models.EmailField()
-    phone = models.CharField(max_length=20)
-    product_types = models.TextField()
-    address = models.CharField(max_length=255)
-    city = models.CharField(max_length=100)
-    state = models.CharField(max_length=100)
-    zip_code = models.CharField(max_length=20)
-    country = models.CharField(max_length=100)
-    description = models.TextField()
+    phone = models.CharField(max_length=20, default='')
+    product_types = models.TextField(default='')
+    address = models.CharField(max_length=255, default='')
+    city = models.CharField(max_length=100, default='')
+    state = models.CharField(max_length=100, default='')
+    zip_code = models.CharField(max_length=20, default='')
+    country = models.CharField(max_length=100, default='')
+    description = models.TextField(default='')
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
     activity = models.CharField(max_length=20, choices=ACTIVITY_CHOICES, default='actif')
-    created_at = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateTimeField(default=timezone.now)
 
     def __str__(self):
         return self.business_name
+
+
+class HelpCategory(models.Model):
+    name = models.CharField(max_length=255)
+    description = models.TextField(blank=True, null=True)
+
+    def __str__(self):
+        return self.name
+    
+class HelpArticle(models.Model):
+    category = models.ForeignKey(HelpCategory, on_delete=models.CASCADE, related_name='articles')
+    title = models.CharField(max_length=255)
+    content = models.TextField()
+    views = models.PositiveIntegerField(default=0)
+
+    def __str__(self):
+        return self.title
+    
+
+class VendorPoliciesGuidelines(models.Model):
+    title = models.CharField(max_length=255, default='Vendor Policies and Guidelines')
+    description = models.TextField()
+
+    def __str__(self):
+        return self.title
+    
+class ContactSubmission(models.Model):
+    name = models.CharField(max_length=255)
+    email = models.EmailField()
+    role = models.CharField(max_length=50)
+    subject = models.CharField(max_length=255)
+    custom_subject = models.CharField(max_length=255, blank=True, null=True)
+    message = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
