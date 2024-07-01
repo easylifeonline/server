@@ -54,6 +54,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'corsheaders',
+    'cors-headers',
     'rest_framework_simplejwt',
     # 'django_elasticsearch_dsl',
     # 'django_elasticsearch_dsl_drf',
