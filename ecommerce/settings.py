@@ -83,7 +83,7 @@ MIDDLEWARE = [
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
-    "https://ecommerce-client-vd50.onrender.com"
+    "https://easylife-shop.onrender.com"
 ]
 
 CORS_ALLOW_HEADERS = [
