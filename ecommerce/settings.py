@@ -81,8 +81,8 @@ MIDDLEWARE = [
 ]
 
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",  # Add your React app's URL here
-    # Add other allowed origins
+    "http://localhost:3000",
+    "https://server-ecommerce-1pvv.onrender.com"
 ]
 
 CORS_ALLOW_HEADERS = [
