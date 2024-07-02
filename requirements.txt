@@ -22,4 +22,4 @@ torchvision
 torchaudio
 tensorflow
 dj-database-url
-psycopg2-binary
+psycopg2
