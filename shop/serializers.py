@@ -104,23 +104,34 @@ class InventorySerializer(serializers.ModelSerializer):
 class ProductSerializer(serializers.ModelSerializer):
     category_id = serializers.PrimaryKeyRelatedField(queryset=Category.objects.all(), source='category', write_only=True)
     category = CategorySerializer(read_only=True)
+    images = ProductImageSerializer(many=True, read_only=True)
+    uploaded_images = serializers.ListField(
+        child=serializers.ImageField(max_length=1000000, allow_empty_file=False, use_url=False),
+        write_only=True
+    )
 
     class Meta:
         model = Product
-        fields = ['id', 'title', 'description', 'price', 'category', 'category_id', 'image', 'sku']
+        fields = [
+            'id', 'title', 'description', 'price', 'category', 'category_id', 'sku', 
+            'created_at', 'updated_at', 'is_best_seller', 'is_new_arrival', 
+            'views', 'active', 'images', 'uploaded_images'
+        ]
 
     def create(self, validated_data):
-        return Product.objects.create(**validated_data)
+        uploaded_images = validated_data.pop('uploaded_images', [])
+        product = super().create(validated_data)
+        for image in uploaded_images:
+            ProductImage.objects.create(product=product, image=image)
+        return product
 
     def update(self, instance, validated_data):
-        instance.title = validated_data.get('title', instance.title)
-        instance.description = validated_data.get('description', instance.description)
-        instance.price = validated_data.get('price', instance.price)
-        instance.category = validated_data.get('category', instance.category)
-        instance.sku = validated_data.get('sku', instance.sku)
-        instance.image = validated_data.get('image', instance.image)
-        instance.save()
-        return instance
+        uploaded_images = validated_data.pop('uploaded_images', None)
+        product = super().update(instance, validated_data)
+        if uploaded_images:
+            for image in uploaded_images:
+                ProductImage.objects.create(product=product, image=image)
+        return product
     
 class ProductDatabaseSerializer(serializers.ModelSerializer):
     class Meta:

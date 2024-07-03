@@ -25,6 +25,8 @@ from .models import Product, ProductVariant, Category, Inventory, Order
 from .serializers import ProductSerializer, ProductVariantSerializer, CategorySerializer, InventorySerializer
 from django.conf import settings
 from django.shortcuts import get_object_or_404
+from rest_framework.exceptions import ValidationError
+
 
 User = get_user_model()
 
@@ -142,8 +144,10 @@ class ProductViewSet(viewsets.ModelViewSet):
                 title=product.title,
                 description=product.description
             )
+            for image in self.request.FILES.getlist('uploaded_images'):
+                ProductImage.objects.create(product=product, image=image)
         except Exception as e:
-            raise e
+            raise ValidationError({'detail': str(e)})
 
     def perform_update(self, serializer):
         try:
@@ -156,8 +160,7 @@ class ProductViewSet(viewsets.ModelViewSet):
                 product_db_entry.description = product.description
                 product_db_entry.save()
         except Exception as e:
-            raise e
-
+            raise ValidationError({'detail': str(e)})
 
 
         

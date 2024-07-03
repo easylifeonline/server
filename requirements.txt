@@ -23,3 +23,5 @@ torchaudio
 tensorflow
 dj-database-url
 psycopg2
+boto3 
+django-storages
